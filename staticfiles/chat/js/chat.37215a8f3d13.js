@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show welcome screen
             messagesContainer.appendChild(welcomeScreen);
             welcomeScreen.style.display = 'flex';
+            lucide.createIcons();
             return;
         }
         
