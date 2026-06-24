@@ -1,0 +1,193 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatMecánica - Asistente Conversacional</title>
+    
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons for clean vector icon pack -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Marked JS for parsing markdown in chat responses -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'chat/css/style.css' %}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <i data-lucide="wrench"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1>AutoMec</h1>
+                        <span>Asistente Inteligente</span>
+                    </div>
+                </div>
+                <button class="mobile-close-btn" id="mobileCloseBtn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-actions">
+                <button class="new-chat-btn" id="newChatBtn">
+                    <i data-lucide="plus"></i>
+                    <span>Nueva Conversación</span>
+                </button>
+            </div>
+            
+            <div class="sidebar-info-card">
+                <p><i data-lucide="shield-alert"></i> <strong>AutoMecIA</strong></p>
+                <p>Soy tu asistente virtual especializado en mecánica automotriz. ¿En qué puedo ayudarte hoy?</p>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-area">
+            <!-- Chat Header -->
+            <header class="chat-header">
+                <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div class="chat-title-info">
+                        <h2 id="currentChatTitle">Nueva Conversación</h2>
+                        <div class="status-indicator">
+                            <span class="status-dot"></span>
+                            <span id="chatStatusText">Asistente listo</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="header-action-btn" id="clearChatBtn" title="Limpiar conversación actual">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                    <button class="header-action-btn" id="infoBtn" title="Información del asistente">
+                        <i data-lucide="info"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Messages Stream -->
+            <div class="messages-container" id="messagesContainer">
+                <!-- Welcome/Initial message -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-icon">
+                        <i data-lucide="message-square"></i>
+                    </div>
+                    <h3>¡Bienvenido a ChatMecánica!</h3>
+                    <p>Soy tu asistente inteligente. Puedes hacerme preguntas técnicas, mecánicas o subir imágenes para que las analice y diagnostique.</p>
+                    <div class="suggested-prompts">
+                        <button class="suggested-prompt-card" data-prompt="¿Cuáles son las causas comunes de que el pedal del freno esté esponjoso?">
+                            <i data-lucide="help-circle"></i>
+                            <span>Pedal de freno esponjoso</span>
+                        </button>
+                        <button class="suggested-prompt-card" data-prompt="Tengo un ruido extraño tipo silbido al acelerar, ¿qué podría ser?">
+                            <i data-lucide="help-circle"></i>
+                            <span>Silbido al acelerar</span>
+                        </button>
+                        <button class="suggested-prompt-card" data-prompt="Sube una foto de una bujía para analizar su desgaste.">
+                            <i data-lucide="image"></i>
+                            <span>Analizar desgaste de bujía</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typing Indicator (Hidden by default) -->
+            <div class="typing-indicator-container" id="typingIndicator">
+                <div class="typing-bubble">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+                <span class="typing-text">Asistente está pensando...</span>
+            </div>
+
+            <!-- Input Controls Area -->
+            <footer class="chat-input-area">
+                <!-- Image Attachment Preview Box (Hidden by default) -->
+                <div class="attachment-preview-wrapper" id="attachmentPreviewWrapper" style="display: none;">
+                    <div class="attachment-preview-card">
+                        <img id="imagePreview" src="" alt="Vista previa del archivo">
+                        <button type="button" class="remove-attachment-btn" id="removeAttachmentBtn">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat Form -->
+                <form class="chat-form" id="chatForm" onsubmit="event.preventDefault();">
+                    {% csrf_token %}
+                    <div class="input-controls">
+                        <!-- File Upload Input (Hidden) -->
+                        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                        
+                        <!-- Attach Button -->
+                        <button type="button" class="action-btn attach-btn" id="attachBtn" title="Adjuntar imagen para análisis">
+                            <i data-lucide="image"></i>
+                        </button>
+
+                        <!-- Textarea (Auto-growing) -->
+                        <textarea 
+                            id="messageInput" 
+                            placeholder="Escribe un mensaje aquí..." 
+                            rows="1" 
+                            autocomplete="off"
+                        ></textarea>
+
+                        <!-- Send Button -->
+                        <button type="submit" class="action-btn send-btn" id="sendBtn" title="Enviar mensaje">
+                            <i data-lucide="send"></i>
+                        </button>
+                    </div>
+                </form>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Info Modal -->
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Sobre AutoMecIA</h3>
+                <button class="modal-close-btn" id="closeModalBtn">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>AutoMecIA</strong> es una interfaz de chat conversacional diseñada para interactuar con modelos de inteligencia artificial avanzados para análisis técnico y de imágenes.</p>
+                <div class="modal-features">
+                    <div class="feature-item">
+                        <i data-lucide="message-square" style="color: #477A9E;"></i>
+                        <div>
+                            <h4>Chat Conversacional</h4>
+                            <p>Interactúa fluidamente en lenguaje natural.</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <i data-lucide="image" style="color: #477A9E;"></i>
+                        <div>
+                            <h4>Análisis de Imágenes</h4>
+                            <p>Sube imágenes de piezas mecánicas o diagramas para un diagnóstico rápido.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="{% static 'chat/js/chat.js' %}"></script>
+</body>
+</html>
