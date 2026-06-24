@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Application State (Memory-only, no localStorage)
     let messages = [];
     let selectedImageBase64 = null; // Store base64 representation of image for instant UI render
+    let selectedImageFile = null;   // Store the actual File/Blob object currently attached (Browser or Unity)
 
     // Initialize marked options (for safe rendering of markdown)
     marked.setOptions({
@@ -190,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         attachmentPreviewWrapper.style.display = 'none';
         attachBtn.classList.remove('has-file');
         selectedImageBase64 = null;
+        selectedImageFile = null; // Clear Unity or Browser file reference
     }
 
     // Convert file object to Base64 String (for instant rendering in chat bubbles)
@@ -201,6 +203,78 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsDataURL(file);
         });
     }
+
+    // --- Unified Image Processing Logic ---
+
+    // [Unified Function] Processes any image file (from <input type="file"> or converted from Unity Base64)
+    async function processImageFile(file) {
+        if (!file) return;
+
+        // Validation for image types
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor selecciona solo archivos de imagen.');
+            clearAttachment();
+            return;
+        }
+
+        // Save reference for later submit
+        selectedImageFile = file;
+
+        // Render preview in UI
+        const objectUrl = URL.createObjectURL(file);
+        imagePreview.src = objectUrl;
+        attachmentPreviewWrapper.style.display = 'flex';
+        attachBtn.classList.add('has-file');
+
+        // Read base64 to display instantly in client user chat bubbles
+        try {
+            selectedImageBase64 = await readFileAsBase64(file);
+        } catch (err) {
+            console.error("Error reading image:", err);
+        }
+    }
+
+    // [Unity helper] Converts a base64 string to a standard HTML File object
+    function base64ToFile(base64, filename, mimeType) {
+        let rawBase64 = base64;
+        let actualMime = mimeType;
+        
+        // Handle potential data URL prefixes (e.g. data:image/png;base64,...)
+        if (base64.startsWith('data:')) {
+            const parts = base64.split(',');
+            rawBase64 = parts[1];
+            actualMime = parts[0].split(';')[0].split(':')[1];
+        }
+        
+        // Decode base64 bytes
+        const byteString = atob(rawBase64);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        
+        return new File([ab], filename, { type: actualMime });
+    }
+
+    // --- Unity Integration Hook ---
+    // Registers a global hook for Unity Gree WebView callback sending selected gallery image
+    window.receiveImage = function(base64Data) {
+        try {
+            const filename = `unity_image_${Date.now()}.jpg`;
+            const defaultMime = 'image/jpeg';
+            
+            // Convert to standard File
+            const file = base64ToFile(base64Data, filename, defaultMime);
+            
+            // Send to the unified processing function
+            processImageFile(file);
+        } catch (error) {
+            console.error("Error processing base64 image from Unity:", error);
+            alert("Error al recibir la imagen de la galería de la aplicación.");
+        }
+    };
 
     // --- Helper Utilities ---
 
@@ -285,28 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
         imageInput.click();
     });
 
-    // File selection handling
-    imageInput.addEventListener('change', async (e) => {
+    // File selection handling (Browser Standard Environment)
+    imageInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (!file.type.startsWith('image/')) {
-                alert('Por favor selecciona solo archivos de imagen.');
-                imageInput.value = '';
-                return;
-            }
-            
-            // Show preview
-            const objectUrl = URL.createObjectURL(file);
-            imagePreview.src = objectUrl;
-            attachmentPreviewWrapper.style.display = 'flex';
-            attachBtn.classList.add('has-file');
-            
-            // Read Base64 for storing in history
-            try {
-                selectedImageBase64 = await readFileAsBase64(file);
-            } catch (err) {
-                console.error("Error reading image:", err);
-            }
+            processImageFile(file);
         }
     });
 
@@ -315,12 +372,13 @@ document.addEventListener('DOMContentLoaded', () => {
         clearAttachment();
     });
 
-    // Chat form submit
+    // Chat form submit (Unified browser and Unity submission)
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const messageText = messageInput.value.trim();
-        const file = imageInput.files[0];
+        // Use the unified selectedImageFile variable which can come from standard input OR Unity WebView
+        const file = selectedImageFile;
         
         if (!messageText && !file) return;
         
