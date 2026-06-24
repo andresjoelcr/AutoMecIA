@@ -8,6 +8,7 @@ class ChatViewsTestCase(TestCase):
         self.client = Client()
         self.home_url = reverse('chat:chat_home')
         self.api_url = reverse('chat:chat_api')
+        self.ping_url = reverse('chat:ping')
 
     def test_chat_home_view(self):
         """Test that the home page renders correctly and uses index.html template"""
@@ -99,3 +100,10 @@ class ChatViewsTestCase(TestCase):
         """Test that GET requests to the API endpoint are blocked (405 Method Not Allowed)"""
         response = self.client.get(self.api_url)
         self.assertEqual(response.status_code, 405)
+
+    def test_ping_view(self):
+        """Test the ping health-check view return code and response payload"""
+        response = self.client.get(self.ping_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"OK")
+        self.assertEqual(response['content-type'], "text/plain")

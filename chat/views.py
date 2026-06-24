@@ -2,7 +2,7 @@ import json
 import base64
 import requests
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.conf import settings
@@ -159,3 +159,9 @@ def chat_api(request):
             'status': 'error',
             'response': f"Ocurrió un error inesperado al procesar la respuesta: {str(e)}"
         }, status=500)
+
+def ping(request):
+    """
+    Simple health check view.
+    """
+    return HttpResponse("OK", content_type="text/plain")
