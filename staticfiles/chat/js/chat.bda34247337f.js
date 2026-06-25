@@ -354,9 +354,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Trigger File Input Dialog
-    attachBtn.addEventListener('click', () => {
-        imageInput.click();
+    // Trigger File Input Dialog or Unity Image Gallery (Híbrido)
+    attachBtn.addEventListener('click', (e) => {
+        // Browser vs Unity: Check if the application runs inside the Unity WebView interface
+        if (typeof Unity !== 'undefined') {
+            e.preventDefault();
+            // Call the Unity WebView bridge message method to open native gallery
+            Unity.call('pickImage');
+        } else {
+            // Normal browser: trigger hidden file selector
+            imageInput.click();
+        }
     });
 
     // File selection handling (Browser Standard Environment)
